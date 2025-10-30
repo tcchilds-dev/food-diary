@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  entries   Entry[]
+}
+
+model Entry {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  entryType String // "food", "symptoms", "exercise"
+
+  // Food-specific
+  mealType String? // "breakfast", "lunch", "dinner", "snack"
+  foodName String?
+  calories Int?
+
+  // Symptom-specific
+  symptomType     String? // "pain", "gas", "bloating", etc.
+  symptomSeverity Int? // "map mild/medium/intense to numbers"
+
+  // Exercise-specific
+  exerciseType      String? // "walking", "lifting", "running"
+  exerciseIntensity Int? // 1-5 scale
+  exerciseDuration  Int? // minutes
+
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([userId, entryType]) // helpful for filtering by type
+}
