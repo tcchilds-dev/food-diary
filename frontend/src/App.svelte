@@ -5,8 +5,6 @@
   import Login from "./lib/pages/Login.svelte"
   import SignUp from "./lib/pages/SignUp.svelte"
   import HomePage from "./lib/pages/HomePage.svelte"
-  import DailyEntries from "./lib/pages/DailyEntries.svelte"
-  import History from "./lib/pages/History.svelte"
   
   let isAuthenticated = $state(false);
 
