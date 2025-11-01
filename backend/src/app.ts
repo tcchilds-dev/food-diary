@@ -5,7 +5,11 @@ import entryRoutes from "./routes/entryRoutes";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173", // Vite server
+  credentials: true
+}));
+
 app.use(express.json());
 
 // health check

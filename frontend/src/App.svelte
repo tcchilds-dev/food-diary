@@ -24,6 +24,44 @@
   import * as Select from "$lib/components/ui/select/index.js";
   import * as Field from "$lib/components/ui/field/index.js";
   import { Textarea } from "$lib/components/ui/textarea/index.js";
+  import { api } from "$lib/api";
+  import { authStore } from "$lib/store/auth.svelte";
+
+  let entries = $state([]);
+  let loading = $state(false);
+
+  // Check auth on mount
+  $effect(() => {
+    authStore.checkAuth();
+  });
+
+  // Load entries when authenticated
+  $effect(() => {
+    if (authStore.user && page === "index") {
+      loadEntries();
+    }
+  });
+
+  async function loadEntries() {
+    loading = true;
+    try {
+      entries = await api.getEntries();
+    } catch (error) {
+      console.error("Failed to lead entries: ", error);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleLogin(email: string, password: string) {
+    try {
+      await authStore.login({ email, password });
+      page = "index";
+    } catch (error) {
+      console.error("Login failed: ", error);
+      // Show error to user
+    }
+  }
 
   const entryTypes = [
     { value: "foodAndDrink", label: "Food & Drink" },
@@ -44,6 +82,16 @@
     entryTypes.find((t) => t.value === value)?.label ?? "Entry Type"
   );
 </script>
+
+<!--
+{#if loading}
+  <p>Loading...</p>
+{:else if error}
+  <p>Error: {error}</p>
+{:else}
+  Your UI here
+{/if}
+-->
 
 <ModeWatcher />
 {#if page === "login"}
