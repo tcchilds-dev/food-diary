@@ -11,4 +11,12 @@ export default defineConfig({
       $lib: path.resolve("./src/lib"),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://localhost:3000', // Express server
+        changeOrigin: true,
+      }
+    }
+  }
 });
