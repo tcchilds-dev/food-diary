@@ -26,9 +26,74 @@
   import { Textarea } from "$lib/components/ui/textarea/index.js";
   import { api } from "$lib/api";
   import { authStore } from "$lib/store/auth.svelte";
+  import { getLocalTimeZone, today } from "@internationalized/date";
+  import Calendar from "$lib/components/ui/calendar/calendar.svelte";
+  import type { ComponentProps } from "svelte";
+  import {
+    FieldGroup,
+    FieldLabel,
+    FieldDescription,
+  } from "$lib/components/ui/field/index.js";
 
-  let entries = $state([]);
+  type Entry =
+    | {
+        id: number;
+        date: string | Date;
+        entryType: "food";
+        mealType: string;
+        foodName: string;
+        calories?: number;
+        notes?: string;
+      }
+    | {
+        id: number;
+        date: string | Date;
+        entryType: "symptoms";
+        symptomType: string;
+        symptomSeverity?: string;
+        notes?: string;
+      }
+    | {
+        id: number;
+        date: string | Date;
+        entryType: "exercise";
+        exerciseType: string;
+        exerciseDuration?: number;
+        notes?: string;
+      };
+
+  let entries: Entry[] = $state([]);
   let loading = $state(false);
+  let error = $state(null);
+
+  let calendarToday = $state(today(getLocalTimeZone()));
+
+  let { ...restProps }: ComponentProps<typeof Card.Root> = $props();
+
+  const id = $props.id();
+
+  // Form state for food entry
+  let foodForm = $state({
+    mealType: "",
+    foodName: "",
+    calories: "",
+    notes: "",
+  });
+
+  // Form state for symptoms
+  let symptomsForm = $state({
+    symptomType: "",
+    symptomSeverity: "",
+    notes: "",
+  });
+
+  // Form state for exercise
+  let exerciseForm = $state({
+    exerciseType: "",
+    exerciseIntensity: "",
+    exerciseDuration: "",
+    notes: "",
+  });
 
   // Check auth on mount
   $effect(() => {
@@ -41,6 +106,129 @@
       loadEntries();
     }
   });
+
+  async function handleFoodSubmit(e: Event) {
+    e.preventDefault();
+    loading = true;
+    error = null;
+
+    try {
+      await api.createEntry({
+        entryType: "food",
+        date: new Date().toISOString(),
+        mealType: foodForm.mealType,
+        foodName: foodForm.foodName,
+        calories: foodForm.calories ? parseInt(foodForm.calories) : null,
+        notes: foodForm.notes || null,
+      });
+
+      // Reset form
+      foodForm = { mealType: "", foodName: "", calories: "", notes: "" };
+
+      // Reload entries
+      await loadEntries();
+
+      // Optionally switch to history view to see the new entry
+      view = "history";
+    } catch (err: any) {
+      error = err.message;
+      console.error("Failed to create food entry:", err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleSymptomsSubmit(e: Event) {
+    e.preventDefault();
+    loading = true;
+    error = null;
+
+    try {
+      await api.createEntry({
+        entryType: "symptoms",
+        date: new Date().toISOString(),
+        symptomType: symptomsForm.symptomType,
+        symptomSeverity: symptomsForm.symptomSeverity
+          ? parseInt(symptomsForm.symptomSeverity)
+          : null,
+        notes: symptomsForm.notes,
+      });
+
+      symptomsForm = { symptomType: "", symptomSeverity: "", notes: "" };
+      await loadEntries();
+      view = "history";
+    } catch (err: any) {
+      error = err.message;
+      console.error("Failed to create symptoms entry:", err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleExerciseSubmit(e: Event) {
+    e.preventDefault();
+    loading = true;
+    error = null;
+
+    try {
+      await api.createEntry({
+        type: "exercise",
+        date: new Date().toISOString(),
+        exerciseType: exerciseForm.exerciseType,
+        exerciseIntensity: exerciseForm.exerciseIntensity
+          ? parseInt(exerciseForm.exerciseIntensity)
+          : null,
+        exerciseDuration: exerciseForm.exerciseDuration
+          ? parseInt(exerciseForm.exerciseDuration)
+          : null,
+        notes: exerciseForm.notes || null,
+      });
+
+      exerciseForm = {
+        exerciseType: "",
+        exerciseIntensity: "",
+        exerciseDuration: "",
+        notes: "",
+      };
+      await loadEntries();
+      view = "history";
+    } catch (err: any) {
+      error = err.message;
+      console.error("Failed to create exercise entry:", err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  function handleCancel() {
+    // Reset appropriate form based on entryType
+    if (entryType === "food") {
+      foodForm = { mealType: "", foodName: "", calories: "", notes: "" };
+    } else if (entryType === "symptoms") {
+      symptomsForm = { symptomType: "", symptomSeverity: "", notes: "" };
+    } else if (entryType === "exercise") {
+      exerciseForm = {
+        exerciseType: "",
+        exerciseIntensity: "",
+        exerciseDuration: "",
+        notes: "",
+      };
+    }
+  }
+
+  async function deleteEntry(id: number) {
+    if (!confirm("Are you sure you want to delete this entry?")) return;
+
+    try {
+      await api.deleteEntry(id.toString());
+      await loadEntries();
+    } catch (err: any) {
+      error = err.messages;
+      console.error("Failed to delete entry:", err);
+    } finally {
+      loading = false;
+    }
+  }
 
   async function loadEntries() {
     loading = true;
@@ -69,39 +257,116 @@
     { value: "exercise", label: "Exercise" },
   ];
 
-  let value = $state<DateRange>({
-    start: new CalendarDate(2025, 6, 12),
-    end: new CalendarDate(2025, 7, 15),
-  });
-
-  let page = "index";
+  let page = $state("index");
   let view = $state("entries");
   let entryType = $state("food");
 
   const triggerContent = $derived(
-    entryTypes.find((t) => t.value === value)?.label ?? "Entry Type"
+    entryTypes.find((t) => t.value === entryType)?.label ?? "Entry Type"
   );
 </script>
-
-<!--
-{#if loading}
-  <p>Loading...</p>
-{:else if error}
-  <p>Error: {error}</p>
-{:else}
-  Your UI here
-{/if}
--->
 
 <ModeWatcher />
 {#if page === "login"}
   <div class="flex h-screen w-full items-center justify-center px-4">
-    <LoginForm />
+    <Card.Root class="mx-auto w-full max-w-sm">
+      <Card.Header>
+        <Card.Title class="text-2xl">Login</Card.Title>
+        <Card.Description
+          >Enter your email below to login to your account</Card.Description
+        >
+      </Card.Header>
+      <Card.Content>
+        <form>
+          <FieldGroup>
+            <Field.Field>
+              <FieldLabel for="email-{id}">Email</FieldLabel>
+              <Input
+                id="email-{id}"
+                type="email"
+                placeholder="m@example.com"
+                required
+              />
+            </Field.Field>
+            <Field.Field>
+              <div class="flex items-center">
+                <FieldLabel for="password-{id}">Password</FieldLabel>
+                <a href="##" class="ml-auto inline-block text-sm underline">
+                  Forgot your password?
+                </a>
+              </div>
+              <Input id="password-{id}" type="password" required />
+            </Field.Field>
+            <Field.Field>
+              <Button type="submit" class="w-full">Login</Button>
+              <FieldDescription class="text-center">
+                Don't have an account? <a href="##">Sign up</a>
+              </FieldDescription>
+            </Field.Field>
+          </FieldGroup>
+        </form>
+      </Card.Content>
+    </Card.Root>
   </div>
 {:else if page === "signup"}
   <div class="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
     <div class="w-full max-w-sm">
-      <SignupForm />
+      <Card.Root {...restProps}>
+        <Card.Header>
+          <Card.Title>Create an account</Card.Title>
+          <Card.Description
+            >Enter your information below to create your account</Card.Description
+          >
+        </Card.Header>
+        <Card.Content>
+          <form>
+            <Field.Group>
+              <Field.Field>
+                <Field.Label for="name">Full Name</Field.Label>
+                <Input id="name" type="text" placeholder="Name McNamerson" />
+              </Field.Field>
+              <Field.Field>
+                <Field.Label for="name">Primary Condition</Field.Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="e.g., IBS, IBD, Ceoliac, etc."
+                />
+              </Field.Field>
+              <Field.Field>
+                <Field.Label for="email">Email</Field.Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="tom@example.com"
+                  required
+                />
+              </Field.Field>
+              <Field.Field>
+                <Field.Label for="password">Password</Field.Label>
+                <Input id="password" type="password" required />
+              </Field.Field>
+              <Field.Field>
+                <Field.Label for="confirm-password"
+                  >Confirm Password</Field.Label
+                >
+                <Input id="confirm-password" type="password" required />
+                <Field.Description
+                  >Please confirm your password.</Field.Description
+                >
+              </Field.Field>
+              <Field.Group>
+                <Field.Field>
+                  <Button type="submit">Create Account</Button>
+                  <Field.Description class="px-6 text-center">
+                    Already have an account? <a href="#/">Sign in</a>
+                  </Field.Description>
+                </Field.Field>
+              </Field.Group>
+            </Field.Group>
+          </form>
+        </Card.Content>
+      </Card.Root>
     </div>
   </div>
 {:else if page === "index"}
@@ -136,10 +401,12 @@
       <div class="flex flex-1 flex-row gap-4 p-4 pt-0">
         <div class="grid auto-rows-min gap-4 md:grid-rows-3">
           <div class="bg-muted/50 aspect-video rounded-xl">
-            <RangeCalendar
-              bind:value
+            <Calendar
+              type="single"
+              bind:value={calendarToday}
               class="rounded-lg border shadow-sm"
               numberOfMonths={2}
+              captionLayout="label"
             />
           </div>
           <div class="bg-muted/50 aspect-video rounded-xl">
@@ -153,15 +420,23 @@
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                <Table.Row>
-                  <Table.Cell class="font-medium pl-3">29/12/1995</Table.Cell>
-                  <Table.Cell>Bloating, Pain, Nausea</Table.Cell>
-                </Table.Row>
+                <Table.Row></Table.Row>
               </Table.Body>
             </Table.Root>
           </div>
         </div>
         <div class="bg-muted/50 min-h-screen flex-1 rounded-xl md:min-h-min">
+          {#if error}
+            <div class="bg-destructive/10 text-destructive p-4 m-4 rounded-lg">
+              {error}
+              <Button
+                variant="ghost"
+                size="sm"
+                onclick={() => (error = null)}
+                class="ml-2">Dismiss</Button
+              >
+            </div>
+          {/if}
           {#if view === "entries"}
             <div class="gap-4 pl-12 pr-20 pt-12">
               <Tabs.Root bind:value={entryType} class="w-[400px]">
@@ -173,15 +448,16 @@
               </Tabs.Root>
             </div>
             {#if entryType === "food"}
-              <form>
+              <form onsubmit={handleFoodSubmit}>
                 <Field.Group>
                   <Field.Set>
                     <Field.Group>
                       <div class="gap-4 pl-12 pr-20 pt-10">
                         <Field.Field>
-                          <Field.Label for="placeholder">Meal Type</Field.Label>
+                          <Field.Label for="mealType">Meal Type</Field.Label>
                           <Input
-                            id="placeholder"
+                            id="mealType"
+                            bind:value={foodForm.mealType}
                             placeholder="e.g., breakfast, lunch, dinner, snack."
                             required
                           />
@@ -189,9 +465,10 @@
                       </div>
                       <div class="gap-4 pl-12 pr-20">
                         <Field.Field>
-                          <Field.Label for="placeholder">Meal Name</Field.Label>
+                          <Field.Label for="foodName">Food Name</Field.Label>
                           <Input
-                            id="placeholder"
+                            id="foodName"
+                            bind:value={foodForm.foodName}
                             placeholder="e.g., mcdonalds large quarter pounder meal"
                             required
                           />
@@ -199,8 +476,13 @@
                       </div>
                       <div class="grid grid-cols-3 gap-4 pl-12">
                         <Field.Field>
-                          <Field.Label for="placeholder">Calories</Field.Label>
-                          <Input id="placeholder" placeholder="1234" />
+                          <Field.Label for="calories">Calories</Field.Label>
+                          <Input
+                            id="calories"
+                            bind:value={foodForm.calories}
+                            placeholder="1234"
+                            type="number"
+                          />
                         </Field.Field>
                       </div>
                     </Field.Group>
@@ -209,9 +491,10 @@
                     <Field.Group>
                       <div class="gap-4 pl-12 pr-20">
                         <Field.Field>
-                          <Field.Label for="placeholder">Notes</Field.Label>
+                          <Field.Label for="foodNotes">Notes</Field.Label>
                           <Textarea
-                            id="placeholder"
+                            id="foodNotes"
+                            bind:value={foodForm.notes}
                             placeholder="Add any additional details"
                             class="resize-none"
                           />
@@ -221,22 +504,29 @@
                   </Field.Set>
                   <div class="gap-4 pl-12 pr-20">
                     <Field.Field orientation="horizontal">
-                      <Button type="submit">Submit</Button>
-                      <Button variant="outline" type="button">Cancel</Button>
+                      <Button type="submit" disabled={loading}
+                        >{loading ? "Submitting..." : "Submit"}</Button
+                      >
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onclick={handleCancel}>Cancel</Button
+                      >
                     </Field.Field>
                   </div>
                 </Field.Group>
               </form>
             {:else if entryType === "symptoms"}
-              <form>
+              <form onsubmit={handleSymptomsSubmit}>
                 <Field.Group>
                   <Field.Set>
                     <Field.Group>
                       <div class="gap-4 pl-12 pr-20 pt-10">
                         <Field.Field>
-                          <Field.Label for="placeholder">Symptoms</Field.Label>
+                          <Field.Label for="symptomType">Symptoms</Field.Label>
                           <Input
-                            id="placeholder"
+                            id="symptomType"
+                            bind:value={symptomsForm.symptomType}
                             placeholder="e.g., bloating, pain, nausea, etc."
                             required
                           />
@@ -244,8 +534,17 @@
                       </div>
                       <div class="grid grid-cols-3 gap-4 pl-12">
                         <Field.Field>
-                          <Field.Label for="placeholder">Severity</Field.Label>
-                          <Input id="placeholder" placeholder="1-5" />
+                          <Field.Label for="symptomSeverity"
+                            >Severity</Field.Label
+                          >
+                          <Input
+                            id="symptomSeverity"
+                            bind:value={symptomsForm.symptomSeverity}
+                            placeholder="1-5"
+                            type="number"
+                            min="1"
+                            max="5"
+                          />
                         </Field.Field>
                       </div>
                     </Field.Group>
@@ -254,9 +553,10 @@
                     <Field.Group>
                       <div class="gap-4 pl-12 pr-20">
                         <Field.Field>
-                          <Field.Label for="placeholder">Notes</Field.Label>
+                          <Field.Label for="symptomsNotes">Notes</Field.Label>
                           <Textarea
-                            id="placeholder"
+                            id="symptomsNotes"
+                            bind:value={symptomsForm.notes}
                             placeholder="Add any additional details"
                             class="resize-none"
                           />
@@ -266,24 +566,31 @@
                   </Field.Set>
                   <div class="gap-4 pl-12 pr-20">
                     <Field.Field orientation="horizontal">
-                      <Button type="submit">Submit</Button>
-                      <Button variant="outline" type="button">Cancel</Button>
+                      <Button type="submit" disabled={loading}
+                        >{loading ? "Submitting..." : "Submit"}</Button
+                      >
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onclick={handleCancel}>Cancel</Button
+                      >
                     </Field.Field>
                   </div>
                 </Field.Group>
               </form>
             {:else if entryType === "exercise"}
-              <form>
+              <form onsubmit={handleExerciseSubmit}>
                 <Field.Group>
                   <Field.Set>
                     <Field.Group>
                       <div class="gap-4 pl-12 pr-20 pt-10">
                         <Field.Field>
-                          <Field.Label for="placeholder"
+                          <Field.Label for="exerciseType"
                             >Exercise Type</Field.Label
                           >
                           <Input
-                            id="placeholder"
+                            id="exerciseType"
+                            bind:value={exerciseForm.exerciseType}
                             placeholder="e.g., walking, swimming, lifting, etc."
                             required
                           />
@@ -291,12 +598,28 @@
                       </div>
                       <div class="grid grid-cols-3 gap-4 pl-12">
                         <Field.Field>
-                          <Field.Label for="placeholder">Intensity</Field.Label>
-                          <Input id="placeholder" placeholder="1-5" />
+                          <Field.Label for="exerciseIntensity"
+                            >Intensity</Field.Label
+                          >
+                          <Input
+                            id="exerciseIntensity"
+                            bind:value={exerciseForm.exerciseIntensity}
+                            placeholder="1-5"
+                            type="number"
+                            min="1"
+                            max="5"
+                          />
                         </Field.Field>
                         <Field.Field>
-                          <Field.Label for="placeholder">Duration</Field.Label>
-                          <Input id="placeholder" placeholder="minutes" />
+                          <Field.Label for="exerciseDuration"
+                            >Duration</Field.Label
+                          >
+                          <Input
+                            id="exerciseDuration"
+                            bind:value={exerciseForm.exerciseDuration}
+                            placeholder="minutes"
+                            type="number"
+                          />
                         </Field.Field>
                       </div>
                     </Field.Group>
@@ -305,9 +628,10 @@
                     <Field.Group>
                       <div class="gap-4 pl-12 pr-20">
                         <Field.Field>
-                          <Field.Label for="placeholder">Notes</Field.Label>
+                          <Field.Label for="exerciseNotes">Notes</Field.Label>
                           <Textarea
-                            id="placeholder"
+                            id="exerciseNotes"
+                            bind:value={exerciseForm.notes}
                             placeholder="Add any additional details"
                             class="resize-none"
                           />
@@ -317,33 +641,75 @@
                   </Field.Set>
                   <div class="gap-4 pl-12 pr-20">
                     <Field.Field orientation="horizontal">
-                      <Button type="submit">Submit</Button>
-                      <Button variant="outline" type="button">Cancel</Button>
+                      <Button type="submit" disabled={loading}
+                        >{loading ? "Submitting..." : "Submit"}</Button
+                      >
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onclick={handleCancel}>Cancel</Button
+                      >
                     </Field.Field>
                   </div>
                 </Field.Group>
               </form>
             {/if}
           {:else if view === "history"}
-            <Table.Root>
-              <Table.Caption>A list of your recent entries.</Table.Caption>
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head class="w-[100px] pl-3">Date</Table.Head>
-                  <Table.Head>Food & Drink</Table.Head>
-                  <Table.Head>Symptoms</Table.Head>
-                  <Table.Head>Exercise</Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                <Table.Row>
-                  <Table.Cell class="font-medium pl-3">29/12/1995</Table.Cell>
-                  <Table.Cell>Cheese</Table.Cell>
-                  <Table.Cell>Cheese Dreams</Table.Cell>
-                  <Table.Cell>Running</Table.Cell>
-                </Table.Row>
-              </Table.Body>
-            </Table.Root>
+            {#if loading}
+              <div class="p-12">Loading entries...</div>
+            {:else if error}
+              <div class="p-12 text-destructive">Error: {error}</div>
+            {:else if entries.length === 0}
+              <div class="p-12">No entries yet. Create your first entry!</div>
+            {:else}
+              <Table.Root>
+                <Table.Caption>A list of your recent entries.</Table.Caption>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.Head class="w-[120px] pl-3">Date</Table.Head>
+                    <Table.Head class="w-[100px]">Type</Table.Head>
+                    <Table.Head>Details</Table.Head>
+                    <Table.Head>Notes</Table.Head>
+                    <Table.Head class="w-[100px]">Actions</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {#each entries as entry: Entry}
+                    <Table.Row>
+                      <Table.Cell class="font-medium pl-3">
+                        {new Date(entry.date).toLocaleDateString()}
+                      </Table.Cell>
+                      <Table.Cell class="capitalize"
+                        >{entry.entryType}</Table.Cell
+                      >
+                      <Table.Cell>
+                        {#if entry.entryType === "food"}
+                          {entry.mealType}: {entry.foodName}
+                          {#if entry.calories}({entry.calories} cal){/if}
+                        {:else if entry.entryType === "symptoms"}
+                          {entry.symptomType}
+                          {#if entry.symptomSeverity}(Severity: {entry.symptomSeverity ||
+                              "N/A"}){/if}
+                        {:else if entry.entryType === "exercise"}
+                          {entry.exerciseType}
+                          {#if entry.exerciseDuration}- {entry.exerciseDuration}min{/if}
+                        {/if}
+                      </Table.Cell>
+                      <Table.Cell>{entry.notes || "-"}</Table.Cell>
+                      <Table.Cell>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onclick={() => deleteEntry(entry.id)}
+                        >
+                          Delete
+                        </Button>
+                      </Table.Cell>
+                    </Table.Row>
+                  {/each}
+                </Table.Body>
+              </Table.Root>
+            {/if}
           {/if}
         </div>
       </div>
