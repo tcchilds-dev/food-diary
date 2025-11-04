@@ -2,26 +2,16 @@
 
 <script lang="ts">
   import "./app.css";
-  import LoginForm from "$lib/components/login-form.svelte";
-  import SignupForm from "$lib/components/signup-form.svelte";
-  import AppSidebar from "$lib/components/app-sidebar.svelte";
-  import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
-  import { Separator } from "$lib/components/ui/separator/index.js";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-  import RangeCalendar from "$lib/components/ui/range-calendar/range-calendar.svelte";
-  import { CalendarDate } from "@internationalized/date";
-  import type { DateRange } from "bits-ui";
   import * as Table from "$lib/components/ui/table/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
-  import { Label } from "$lib/components/ui/label/index.js";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
   import { toggleMode } from "mode-watcher";
   import { ModeWatcher } from "mode-watcher";
-  import * as Select from "$lib/components/ui/select/index.js";
   import * as Field from "$lib/components/ui/field/index.js";
   import { Textarea } from "$lib/components/ui/textarea/index.js";
   import { api } from "$lib/api";
@@ -64,13 +54,28 @@
 
   let entries: Entry[] = $state([]);
   let loading = $state(false);
-  let error = $state(null);
+  let error = $state<string | null>(null);
 
   let calendarToday = $state(today(getLocalTimeZone()));
 
   let { ...restProps }: ComponentProps<typeof Card.Root> = $props();
 
   const id = $props.id();
+
+  // Auth form state
+  let loginForm = $state({
+    email: "",
+    password: "",
+  });
+
+  let signupForm = $state({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  let authError = $state<string | null>(null);
 
   // Form state for food entry
   let foodForm = $state({
@@ -95,17 +100,97 @@
     notes: "",
   });
 
-  // Check auth on mount
+  let page = $state("index");
+  let view = $state("entries");
+  let entryType = $state("food");
+
+  // Check auth on mount and redirect accordingly
   $effect(() => {
-    authStore.checkAuth();
+    const checkAndRedirect = async () => {
+      await authStore.checkAuth();
+      if (authStore.user) {
+        page = "index";
+      } else {
+        page = "login";
+      }
+    };
+    checkAndRedirect();
   });
 
-  // Load entries when authenticated
+  // Load entries when authenticated and on index page
   $effect(() => {
     if (authStore.user && page === "index") {
       loadEntries();
     }
   });
+
+  // Login handler
+  async function handleLoginSubmit(e: Event) {
+    e.preventDefault();
+    authError = null;
+
+    if (!loginForm.email || !loginForm.password) {
+      authError = "Please fill in all fields";
+      return;
+    }
+
+    try {
+      await authStore.login({
+        email: loginForm.email,
+        password: loginForm.password,
+      });
+      page = "index";
+      loginForm = { email: "", password: "" };
+    } catch (err: any) {
+      authError = err.message || "Login failed. Please try again.";
+      console.error("Login failed:", err);
+    }
+  }
+
+  // Signup handler
+  async function handleSignupSubmit(e: Event) {
+    e.preventDefault();
+    authError = null;
+
+    if (
+      !signupForm.email ||
+      !signupForm.password ||
+      !signupForm.confirmPassword
+    ) {
+      authError = "Please fill in all required fields";
+      return;
+    }
+
+    if (signupForm.password !== signupForm.confirmPassword) {
+      authError = "Passwords do not match";
+      return;
+    }
+
+    if (signupForm.password.length < 6) {
+      authError = "Password must be at least 6 characters";
+      return;
+    }
+
+    try {
+      await authStore.register({
+        email: signupForm.email,
+        password: signupForm.password,
+        name: signupForm.name || undefined,
+      });
+      page = "index";
+      signupForm = { name: "", email: "", password: "", confirmPassword: "" };
+    } catch (err: any) {
+      authError = err.message || "Signup failed. Please try again.";
+      console.error("Signup failed:", err);
+    }
+  }
+
+  // Logout handler
+  function handleLogout() {
+    authStore.logout();
+    page = "login";
+    entries = [];
+  }
 
   async function handleFoodSubmit(e: Event) {
     e.preventDefault();
@@ -145,7 +230,7 @@
 
     try {
       await api.createEntry({
-        entryType: "symptoms",
+        entryType: "symptom",
         date: new Date().toISOString(),
         symptomType: symptomsForm.symptomType,
         symptomSeverity: symptomsForm.symptomSeverity
@@ -172,7 +257,7 @@
 
     try {
       await api.createEntry({
-        type: "exercise",
+        entryType: "exercise",
         date: new Date().toISOString(),
         exerciseType: exerciseForm.exerciseType,
         exerciseIntensity: exerciseForm.exerciseIntensity
@@ -241,25 +326,11 @@
     }
   }
 
-  async function handleLogin(email: string, password: string) {
-    try {
-      await authStore.login({ email, password });
-      page = "index";
-    } catch (error) {
-      console.error("Login failed: ", error);
-      // Show error to user
-    }
-  }
-
   const entryTypes = [
     { value: "foodAndDrink", label: "Food & Drink" },
     { value: "symptoms", label: "Symptoms" },
     { value: "exercise", label: "Exercise" },
   ];
-
-  let page = $state("index");
-  let view = $state("entries");
-  let entryType = $state("food");
 
   const triggerContent = $derived(
     entryTypes.find((t) => t.value === entryType)?.label ?? "Entry Type"
@@ -277,30 +348,52 @@
         >
       </Card.Header>
       <Card.Content>
-        <form>
+        <form onsubmit={handleLoginSubmit}>
           <FieldGroup>
+            {#if authError}
+              <div
+                class="bg-destructive/10 text-destructive p-3 rounded-lg text-sm"
+              >
+                {authError}
+              </div>
+            {/if}
             <Field.Field>
               <FieldLabel for="email-{id}">Email</FieldLabel>
               <Input
                 id="email-{id}"
                 type="email"
                 placeholder="m@example.com"
+                bind:value={loginForm.email}
                 required
               />
             </Field.Field>
             <Field.Field>
               <div class="flex items-center">
                 <FieldLabel for="password-{id}">Password</FieldLabel>
-                <a href="##" class="ml-auto inline-block text-sm underline">
-                  Forgot your password?
-                </a>
               </div>
-              <Input id="password-{id}" type="password" required />
+              <Input
+                id="password-{id}"
+                type="password"
+                bind:value={loginForm.password}
+                required
+              />
             </Field.Field>
             <Field.Field>
-              <Button type="submit" class="w-full">Login</Button>
+              <Button type="submit" class="w-full" disabled={authStore.loading}
+                >{authStore.loading ? "Logging in..." : "Login"}</Button
+              >
               <FieldDescription class="text-center">
-                Don't have an account? <a href="##">Sign up</a>
+                Don't have an account?
+                <button
+                  type="button"
+                  onclick={() => {
+                    page = "signup";
+                    authError = null;
+                  }}
+                  class="underline"
+                >
+                  Sign Up
+                </button>
               </FieldDescription>
             </Field.Field>
           </FieldGroup>
@@ -319,47 +412,85 @@
           >
         </Card.Header>
         <Card.Content>
-          <form>
+          <form onsubmit={handleSignupSubmit}>
             <Field.Group>
+              {#if authError}
+                <div
+                  class="bg-destructive/10 text-destructive p-3 rounded-lg text-sm"
+                >
+                  {authError}
+                </div>
+              {/if}
               <Field.Field>
-                <Field.Label for="name">Full Name</Field.Label>
-                <Input id="name" type="text" placeholder="Name McNamerson" />
+                <Field.Label for="name">Name</Field.Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="(optional)"
+                  bind:value={signupForm.name}
+                />
               </Field.Field>
-              <Field.Field>
+              <!-- <Field.Field>
                 <Field.Label for="name">Primary Condition</Field.Label>
                 <Input
                   id="name"
                   type="text"
                   placeholder="e.g., IBS, IBD, Ceoliac, etc."
                 />
-              </Field.Field>
+              </Field.Field> -->
               <Field.Field>
-                <Field.Label for="email">Email</Field.Label>
+                <Field.Label for="signup-email">Email</Field.Label>
                 <Input
-                  id="email"
+                  id="signup-email"
                   type="email"
                   placeholder="tom@example.com"
+                  bind:value={signupForm.email}
                   required
                 />
               </Field.Field>
               <Field.Field>
-                <Field.Label for="password">Password</Field.Label>
-                <Input id="password" type="password" required />
+                <Field.Label for="signup-password">Password</Field.Label>
+                <Input
+                  id="signup-password"
+                  type="password"
+                  bind:value={signupForm.password}
+                  required
+                />
+                <Field.Description>
+                  Must be at least 6 characters
+                </Field.Description>
               </Field.Field>
               <Field.Field>
                 <Field.Label for="confirm-password"
                   >Confirm Password</Field.Label
                 >
-                <Input id="confirm-password" type="password" required />
-                <Field.Description
-                  >Please confirm your password.</Field.Description
-                >
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  bind:value={signupForm.confirmPassword}
+                  required
+                />
               </Field.Field>
               <Field.Group>
                 <Field.Field>
-                  <Button type="submit">Create Account</Button>
+                  <Button
+                    type="submit"
+                    class="w-full"
+                    disabled={authStore.loading}
+                    >{authStore.loading
+                      ? "Creating account..."
+                      : "Create Account"}</Button
+                  >
                   <Field.Description class="px-6 text-center">
-                    Already have an account? <a href="#/">Sign in</a>
+                    Already have an account?
+                    <button
+                      type="button"
+                      onclick={() => {
+                        page = "login";
+                        authError = null;
+                      }}
+                      class="underline">Sign in</button
+                    >
                   </Field.Description>
                 </Field.Field>
               </Field.Group>
@@ -424,6 +555,9 @@
               </Table.Body>
             </Table.Root>
           </div>
+          <Button onclick={handleLogout} variant="outline" class="mr-4"
+            >Logout</Button
+          >
         </div>
         <div class="bg-muted/50 min-h-screen flex-1 rounded-xl md:min-h-min">
           {#if error}
