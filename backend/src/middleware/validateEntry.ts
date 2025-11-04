@@ -31,7 +31,7 @@ export const validateEntry = (
       .json({ error: "symptomType is required for symptom entries " });
   }
 
-  if (entryType === "exercise" && !foodName) {
+  if (entryType === "exercise" && !exerciseType) {
     return res
       .status(400)
       .json({ error: "exerciseType is required for exercise entries " });

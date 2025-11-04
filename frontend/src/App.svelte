@@ -38,7 +38,7 @@
     | {
         id: number;
         date: string | Date;
-        entryType: "symptoms";
+        entryType: "symptom";
         symptomType: string;
         symptomSeverity?: string;
         notes?: string;
@@ -820,7 +820,7 @@
                         {#if entry.entryType === "food"}
                           {entry.mealType}: {entry.foodName}
                           {#if entry.calories}({entry.calories} cal){/if}
-                        {:else if entry.entryType === "symptoms"}
+                        {:else if entry.entryType === "symptom"}
                           {entry.symptomType}
                           {#if entry.symptomSeverity}(Severity: {entry.symptomSeverity ||
                               "N/A"}){/if}
