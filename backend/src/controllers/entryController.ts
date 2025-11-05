@@ -1,8 +1,6 @@
 import { Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../client";
 import { AuthRequest } from "../middleware/auth";
-
-const prisma = new PrismaClient();
 
 export const createEntry = async (req: AuthRequest, res: Response) => {
   try {
