@@ -21,7 +21,7 @@ model Entry {
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime @default(now())
-  entryType String // "food", "symptoms", "exercise"
+  entryType String // "food", "symptom", "exercise"
 
   // Food-specific
   mealType String? // "breakfast", "lunch", "dinner", "snack"
