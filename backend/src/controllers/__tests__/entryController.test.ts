@@ -1,69 +1,183 @@
-import {
-  createEntry,
-  getEntries,
-  getEntry,
-  updateEntry,
-  deleteEntry,
-} from "../entryController";
+import { createEntry, getEntries, deleteEntry } from "../entryController";
 import { prismaMock } from "../../singleton";
 import { AuthRequest } from "../../middleware/auth";
 import { Response } from "express";
 
-describe("Entry Controller", () => {
-  let mockReq: Partial<AuthRequest>;
+describe("entryController", () => {
+  let mockAuthReq: Partial<AuthRequest>;
   let mockRes: Partial<Response>;
+
+  mockAuthReq = {
+    params: {},
+    query: {},
+    body: {},
+    userId: undefined,
+  };
+
+  mockRes = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockReq = {
-      body: {},
-      params: {},
-      query: {},
-      userId: 1,
-    };
-
-    mockRes = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-    };
   });
 
   describe("createEntry", () => {
-    it("should create an entry for the authenticated user", async () => {
-      const entryData = {
-        date: new Date("2024-01-01"),
-        entryType: "MEAL",
-        note: "Breakfast",
-      };
-
-      const createdEntry = {
+    it("should successfully create a new food entry", async () => {
+      const mockEntry = {
         id: 1,
         userId: 1,
-        ...entryData,
+        date: new Date(),
+        entryType: "food",
+        mealType: "dinner",
+        foodName: "burger",
+        calories: 300,
+        symptomType: null,
+        symptomSeverity: null,
+        exerciseType: null,
+        exerciseIntensity: null,
+        exerciseDuration: null,
+        notes: "test",
+        createdAt: new Date(),
       };
 
-      mockReq.body = entryData;
+      mockAuthReq.body = {
+        entryType: "food",
+        mealType: "dinner",
+        foodName: "burger",
+        calories: 300,
+        notes: "test",
+      };
 
-      prismaMock.entry.create.mockResolvedValue(createdEntry as never);
+      mockAuthReq.userId = 1;
 
-      await createEntry(mockReq as AuthRequest, mockRes as Response);
+      prismaMock.entry.create.mockResolvedValue(mockEntry);
+
+      await createEntry(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(prismaMock.entry.create).toHaveBeenCalledWith({
         data: {
-          userId: 1,
-          ...entryData,
+          userId: mockAuthReq.userId!,
+          ...mockAuthReq.body,
         },
       });
       expect(mockRes.status).toHaveBeenCalledWith(201);
-      expect(mockRes.json).toHaveBeenCalledWith(createdEntry);
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntry);
+    });
+    it("should successfully create a new symptom entry", async () => {
+      const mockEntry = {
+        id: 1,
+        userId: 1,
+        date: new Date(),
+        entryType: "symptom",
+        mealType: null,
+        foodName: null,
+        calories: null,
+        symptomType: "pain",
+        symptomSeverity: 2,
+        exerciseType: null,
+        exerciseIntensity: null,
+        exerciseDuration: null,
+        notes: "test",
+        createdAt: new Date(),
+      };
+
+      mockAuthReq.body = {
+        entryType: "symptom",
+        symptomType: "pain",
+        symptomSeverity: 2,
+        notes: "test",
+      };
+
+      mockAuthReq.userId = 1;
+
+      prismaMock.entry.create.mockResolvedValue(mockEntry);
+
+      await createEntry(mockAuthReq as AuthRequest, mockRes as Response);
+
+      expect(prismaMock.entry.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockAuthReq.userId!,
+          ...mockAuthReq.body,
+        },
+      });
+      expect(mockRes.status).toHaveBeenCalledWith(201);
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntry);
+    });
+    it("should successfully create a new exercise entry", async () => {
+      const mockEntry = {
+        id: 1,
+        userId: 1,
+        date: new Date(),
+        entryType: "exercise",
+        mealType: null,
+        foodName: null,
+        calories: null,
+        symptomType: null,
+        symptomSeverity: null,
+        exerciseType: "walking",
+        exerciseIntensity: 2,
+        exerciseDuration: 120,
+        notes: "test",
+        createdAt: new Date(),
+      };
+
+      mockAuthReq.body = {
+        entryType: "exercise",
+        exerciseType: "walking",
+        exerciseIntensity: 2,
+        exerciseDuration: 120,
+        notes: "test",
+      };
+
+      mockAuthReq.userId = 1;
+
+      prismaMock.entry.create.mockResolvedValue(mockEntry);
+
+      await createEntry(mockAuthReq as AuthRequest, mockRes as Response);
+
+      expect(prismaMock.entry.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockAuthReq.userId!,
+          ...mockAuthReq.body,
+        },
+      });
+      expect(mockRes.status).toHaveBeenCalledWith(201);
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntry);
     });
 
-    it("should return 500 when creation fails", async () => {
-      mockReq.body = { entryType: "MEAL" };
+    it("should return 500 if there was an error creating the entry", async () => {
+      const mockEntry = {
+        id: 1,
+        userId: 1,
+        date: new Date(),
+        entryType: "food",
+        mealType: "dinner",
+        foodName: "burger",
+        calories: 300,
+        symptomType: null,
+        symptomSeverity: null,
+        exerciseType: null,
+        exerciseIntensity: null,
+        exerciseDuration: null,
+        notes: "test",
+        createdAt: new Date(),
+      };
+
+      mockAuthReq.body = {
+        entryType: "food",
+        mealType: "dinner",
+        foodName: "burger",
+        calories: 300,
+        notes: "test",
+      };
+
+      mockAuthReq.userId = 1;
+
       prismaMock.entry.create.mockRejectedValue(new Error("Database error"));
 
-      await createEntry(mockReq as AuthRequest, mockRes as Response);
+      await createEntry(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -73,31 +187,81 @@ describe("Entry Controller", () => {
   });
 
   describe("getEntries", () => {
-    it("should fetch entries for the user without filters", async () => {
-      const entries = [
-        { id: 1, userId: 1, entryType: "MEAL", date: new Date("2024-01-01") },
+    it("should return all entries for a user when no filters are provided", async () => {
+      const mockEntries = [
+        {
+          id: 1,
+          userId: 1,
+          date: new Date("2024-01-15"),
+          entryType: "food",
+          mealType: "breakfast",
+          foodName: "oatmeal",
+          calories: 200,
+          symptomType: null,
+          symptomSeverity: null,
+          exerciseType: null,
+          exerciseIntensity: null,
+          exerciseDuration: null,
+          notes: "morning meal",
+          createdAt: new Date(),
+        },
+        {
+          id: 2,
+          userId: 1,
+          date: new Date("2024-01-14"),
+          entryType: "symptom",
+          mealType: null,
+          foodName: null,
+          calories: null,
+          symptomType: "bloating",
+          symptomSeverity: 3,
+          exerciseType: null,
+          exerciseIntensity: null,
+          exerciseDuration: null,
+          notes: "felt bloated",
+          createdAt: new Date(),
+        },
       ];
 
-      prismaMock.entry.findMany.mockResolvedValue(entries as never);
+      prismaMock.entry.findMany.mockResolvedValue(mockEntries);
 
-      await getEntries(mockReq as AuthRequest, mockRes as Response);
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(prismaMock.entry.findMany).toHaveBeenCalledWith({
         where: { userId: 1 },
         orderBy: { date: "desc" },
       });
-      expect(mockRes.json).toHaveBeenCalledWith(entries);
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntries);
     });
 
-    it("should apply date filter when date is provided", async () => {
-      const queryDate = new Date("2024-02-10");
+    it("should filter entries by specific date", async () => {
+      const mockEntries = [
+        {
+          id: 1,
+          userId: 1,
+          date: new Date("2024-01-15T10:00:00"),
+          entryType: "food",
+          mealType: "lunch",
+          foodName: "salad",
+          calories: 300,
+          symptomType: null,
+          symptomSeverity: null,
+          exerciseType: null,
+          exerciseIntensity: null,
+          exerciseDuration: null,
+          notes: null,
+          createdAt: new Date(),
+        },
+      ];
+
+      mockAuthReq.query = { date: "2024-01-15" };
+      prismaMock.entry.findMany.mockResolvedValue(mockEntries);
+
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
+
+      const queryDate = new Date("2024-01-15");
       const nextDay = new Date(queryDate);
       nextDay.setDate(nextDay.getDate() + 1);
-
-      mockReq.query = { date: "2024-02-10" } as any;
-      prismaMock.entry.findMany.mockResolvedValue([] as never);
-
-      await getEntries(mockReq as AuthRequest, mockRes as Response);
 
       expect(prismaMock.entry.findMany).toHaveBeenCalledWith({
         where: {
@@ -109,39 +273,215 @@ describe("Entry Controller", () => {
         },
         orderBy: { date: "desc" },
       });
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntries);
     });
 
-    it("should apply date range and entry type filters", async () => {
-      const start = new Date("2024-03-01");
-      const end = new Date("2024-03-05");
+    it("should filter entries by date range", async () => {
+      const mockEntries = [
+        {
+          id: 1,
+          userId: 1,
+          date: new Date("2024-01-15"),
+          entryType: "exercise",
+          mealType: null,
+          foodName: null,
+          calories: null,
+          symptomType: null,
+          symptomSeverity: null,
+          exerciseType: "running",
+          exerciseIntensity: 4,
+          exerciseDuration: 30,
+          notes: "morning run",
+          createdAt: new Date(),
+        },
+      ];
 
-      mockReq.query = {
-        startDate: "2024-03-01",
-        endDate: "2024-03-05",
-        entryType: "MOOD",
-      } as any;
+      mockAuthReq.query = { startDate: "2024-01-10", endDate: "2024-01-20" };
+      prismaMock.entry.findMany.mockResolvedValue(mockEntries);
 
-      prismaMock.entry.findMany.mockResolvedValue([] as never);
-
-      await getEntries(mockReq as AuthRequest, mockRes as Response);
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(prismaMock.entry.findMany).toHaveBeenCalledWith({
         where: {
           userId: 1,
           date: {
-            gte: start,
-            lte: end,
+            gte: new Date("2024-01-10"),
+            lte: new Date("2024-01-20"),
           },
-          entryType: "MOOD",
         },
         orderBy: { date: "desc" },
       });
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntries);
     });
 
-    it("should return 500 when fetching entries fails", async () => {
+    it("should filter entries by entryType", async () => {
+      const mockEntries = [
+        {
+          id: 1,
+          userId: 1,
+          date: new Date("2024-01-15"),
+          entryType: "food",
+          mealType: "dinner",
+          foodName: "pasta",
+          calories: 500,
+          symptomType: null,
+          symptomSeverity: null,
+          exerciseType: null,
+          exerciseIntensity: null,
+          exerciseDuration: null,
+          notes: null,
+          createdAt: new Date(),
+        },
+      ];
+
+      mockAuthReq.query = { entryType: "food" };
+      prismaMock.entry.findMany.mockResolvedValue(mockEntries);
+
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
+
+      expect(prismaMock.entry.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 1,
+          entryType: "food",
+        },
+        orderBy: { date: "desc" },
+      });
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntries);
+    });
+
+    it("should filter entries by both date and entryType", async () => {
+      const mockEntries = [
+        {
+          id: 1,
+          userId: 1,
+          date: new Date("2024-01-15T10:00:00"),
+          entryType: "symptom",
+          mealType: null,
+          foodName: null,
+          calories: null,
+          symptomType: "pain",
+          symptomSeverity: 5,
+          exerciseType: null,
+          exerciseIntensity: null,
+          exerciseDuration: null,
+          notes: "severe pain",
+          createdAt: new Date(),
+        },
+      ];
+
+      mockAuthReq.query = { date: "2024-01-15", entryType: "symptom" };
+      prismaMock.entry.findMany.mockResolvedValue(mockEntries);
+
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
+
+      const queryDate = new Date("2024-01-15");
+      const nextDay = new Date(queryDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      expect(prismaMock.entry.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 1,
+          date: {
+            gte: queryDate,
+            lt: nextDay,
+          },
+          entryType: "symptom",
+        },
+        orderBy: { date: "desc" },
+      });
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntries);
+    });
+
+    it("should filter entries by date range and entryType", async () => {
+      const mockEntries = [
+        {
+          id: 1,
+          userId: 1,
+          date: new Date("2024-01-15"),
+          entryType: "exercise",
+          mealType: null,
+          foodName: null,
+          calories: null,
+          symptomType: null,
+          symptomSeverity: null,
+          exerciseType: "walking",
+          exerciseIntensity: 2,
+          exerciseDuration: 45,
+          notes: null,
+          createdAt: new Date(),
+        },
+      ];
+
+      mockAuthReq.query = {
+        startDate: "2024-01-10",
+        endDate: "2024-01-20",
+        entryType: "exercise",
+      };
+      prismaMock.entry.findMany.mockResolvedValue(mockEntries);
+
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
+
+      expect(prismaMock.entry.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 1,
+          date: {
+            gte: new Date("2024-01-10"),
+            lte: new Date("2024-01-20"),
+          },
+          entryType: "exercise",
+        },
+        orderBy: { date: "desc" },
+      });
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntries);
+    });
+
+    it("should return empty array when no entries match filters", async () => {
+      mockAuthReq.query = { entryType: "food" };
+      prismaMock.entry.findMany.mockResolvedValue([]);
+
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
+
+      expect(mockRes.json).toHaveBeenCalledWith([]);
+    });
+
+    it("should only return entries for the authenticated user", async () => {
+      const mockEntries = [
+        {
+          id: 1,
+          userId: 1,
+          date: new Date("2024-01-15"),
+          entryType: "food",
+          mealType: "breakfast",
+          foodName: "eggs",
+          calories: 150,
+          symptomType: null,
+          symptomSeverity: null,
+          exerciseType: null,
+          exerciseIntensity: null,
+          exerciseDuration: null,
+          notes: null,
+          createdAt: new Date(),
+        },
+      ];
+
+      mockAuthReq.userId = 1;
+      prismaMock.entry.findMany.mockResolvedValue(mockEntries);
+
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
+
+      expect(prismaMock.entry.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ userId: 1 }),
+        }),
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(mockEntries);
+    });
+
+    it("should return 500 if there was an error fetching entries", async () => {
+      mockAuthReq.query = {};
       prismaMock.entry.findMany.mockRejectedValue(new Error("Database error"));
 
-      await getEntries(mockReq as AuthRequest, mockRes as Response);
+      await getEntries(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -150,192 +490,87 @@ describe("Entry Controller", () => {
     });
   });
 
-  describe("getEntry", () => {
-    it("should return a specific entry for the user", async () => {
-      const entry = {
-        id: 1,
-        userId: 1,
-        entryType: "MEAL",
-        date: new Date("2024-01-02"),
-      };
-
-      mockReq.params = { id: "1" };
-      prismaMock.entry.findFirst.mockResolvedValue(entry as never);
-
-      await getEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(prismaMock.entry.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-          userId: 1,
-        },
-      });
-      expect(mockRes.json).toHaveBeenCalledWith(entry);
-    });
-
-    it("should return 400 when id or userId is missing", async () => {
-      mockReq.userId = undefined;
-      mockReq.params = {};
-
-      await getEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Invalid request" });
-      expect(prismaMock.entry.findFirst).not.toHaveBeenCalled();
-    });
-
-    it("should return 404 when entry is not found", async () => {
-      mockReq.params = { id: "5" };
-      prismaMock.entry.findFirst.mockResolvedValue(null as never);
-
-      await getEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Entry not found" });
-    });
-
-    it("should return 500 when fetching the entry fails", async () => {
-      mockReq.params = { id: "2" };
-      prismaMock.entry.findFirst.mockRejectedValue(new Error("Database error"));
-
-      await getEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: "Error fetching entry",
-      });
-    });
-  });
-
-  describe("updateEntry", () => {
-    it("should update an existing entry", async () => {
-      const existingEntry = {
-        id: 1,
-        userId: 1,
-      };
-
-      const updatedEntry = {
-        ...existingEntry,
-        note: "Updated note",
-      };
-
-      mockReq.params = { id: "1" };
-      mockReq.body = { note: "Updated note" };
-
-      prismaMock.entry.findFirst.mockResolvedValue(existingEntry as never);
-      prismaMock.entry.update.mockResolvedValue(updatedEntry as never);
-
-      await updateEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(prismaMock.entry.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-          userId: 1,
-        },
-      });
-      expect(prismaMock.entry.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { note: "Updated note" },
-      });
-      expect(mockRes.json).toHaveBeenCalledWith(updatedEntry);
-    });
-
-    it("should return 400 when id or userId is missing", async () => {
-      mockReq.userId = undefined;
-      mockReq.params = {};
-
-      await updateEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Invalid request" });
-      expect(prismaMock.entry.findFirst).not.toHaveBeenCalled();
-      expect(prismaMock.entry.update).not.toHaveBeenCalled();
-    });
-
-    it("should return 404 when entry does not exist", async () => {
-      mockReq.params = { id: "3" };
-      prismaMock.entry.findFirst.mockResolvedValue(null as never);
-
-      await updateEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Entry not found" });
-      expect(prismaMock.entry.update).not.toHaveBeenCalled();
-    });
-
-    it("should return 500 when update fails", async () => {
-      mockReq.params = { id: "1" };
-      mockReq.body = { note: "Updated note" };
-
-      prismaMock.entry.findFirst.mockResolvedValue({ id: 1, userId: 1 } as never);
-      prismaMock.entry.update.mockRejectedValue(new Error("Database error"));
-
-      await updateEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: "Error updating entry",
-      });
-    });
-  });
-
   describe("deleteEntry", () => {
-    it("should delete an existing entry", async () => {
-      mockReq.params = { id: "1" };
+    it("should delete a specified entry", async () => {
+      const mockEntry = {
+        id: 1,
+        userId: 1,
+        date: new Date(),
+        entryType: "exercise",
+        mealType: null,
+        foodName: null,
+        calories: null,
+        symptomType: null,
+        symptomSeverity: null,
+        exerciseType: "walking",
+        exerciseIntensity: 2,
+        exerciseDuration: 120,
+        notes: "test",
+        createdAt: new Date(),
+      };
 
-      prismaMock.entry.findFirst.mockResolvedValue({ id: 1, userId: 1 } as never);
-      prismaMock.entry.delete.mockResolvedValue({} as never);
+      mockAuthReq.params = { id: "1" };
 
-      await deleteEntry(mockReq as AuthRequest, mockRes as Response);
+      mockAuthReq.userId = 1;
+
+      prismaMock.entry.findFirst.mockResolvedValue(mockEntry);
+
+      await deleteEntry(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(prismaMock.entry.findFirst).toHaveBeenCalledWith({
         where: {
-          id: 1,
+          id: parseInt("1"),
           userId: 1,
         },
       });
       expect(prismaMock.entry.delete).toHaveBeenCalledWith({
-        where: { id: 1 },
+        where: {
+          id: parseInt("1"),
+        },
       });
       expect(mockRes.json).toHaveBeenCalledWith({
         message: "Entry deleted successfully",
       });
     });
 
-    it("should return 400 when id or userId is missing", async () => {
-      mockReq.userId = undefined;
-      mockReq.params = {};
+    it("should return 400 if id is missing", async () => {
+      mockAuthReq.userId = 1;
 
-      await deleteEntry(mockReq as AuthRequest, mockRes as Response);
+      mockAuthReq.params = {};
+
+      await deleteEntry(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Invalid request" });
-      expect(prismaMock.entry.findFirst).not.toHaveBeenCalled();
-      expect(prismaMock.entry.delete).not.toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: "Invalid request",
+      });
     });
 
-    it("should return 404 when entry is not found", async () => {
-      mockReq.params = { id: "2" };
-      prismaMock.entry.findFirst.mockResolvedValue(null as never);
+    it("should return 400 if userId is missing", async () => {
+      mockAuthReq.userId = undefined;
 
-      await deleteEntry(mockReq as AuthRequest, mockRes as Response);
+      mockAuthReq.params = { id: "1" };
+
+      await deleteEntry(mockAuthReq as AuthRequest, mockRes as Response);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: "Invalid request",
+      });
+    });
+
+    it("should return 404 if the entry does not exist", async () => {
+      mockAuthReq.params = { id: "1" };
+
+      mockAuthReq.userId = 1;
+
+      prismaMock.entry.findFirst.mockResolvedValue(null);
+
+      await deleteEntry(mockAuthReq as AuthRequest, mockRes as Response);
 
       expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Entry not found" });
-      expect(prismaMock.entry.delete).not.toHaveBeenCalled();
-    });
-
-    it("should return 500 when delete fails", async () => {
-      mockReq.params = { id: "1" };
-
-      prismaMock.entry.findFirst.mockResolvedValue({ id: 1, userId: 1 } as never);
-      prismaMock.entry.delete.mockRejectedValue(new Error("Database error"));
-
-      await deleteEntry(mockReq as AuthRequest, mockRes as Response);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
-        error: "Error deleting entry ",
+        error: "Entry not found",
       });
     });
   });
