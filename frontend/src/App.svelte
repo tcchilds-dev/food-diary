@@ -17,7 +17,7 @@
   import { api } from "$lib/api";
   import { authStore } from "$lib/store/auth.svelte";
   import { getLocalTimeZone, today } from "@internationalized/date";
-  import Calendar from "$lib/components/ui/calendar/calendar.svelte";
+  import * as NativeSelect from "$lib/components/ui/native-select/index.js";
   import type { ComponentProps } from "svelte";
   import {
     FieldGroup,
@@ -103,6 +103,64 @@
   let page = $state("index");
   let view = $state("entries");
   let entryType = $state("food");
+
+  type EntryTypeFilter = Entry["entryType"] | "any";
+  type DateFilter = "all" | "day" | "week" | "month" | "year";
+
+  let historyEntryTypeFilter: EntryTypeFilter = $state("any");
+  let historyDateFilter: DateFilter = $state("all");
+
+  function matchesDateFilter(date: Date, filter: DateFilter) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    if (filter === "all") {
+      return true;
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    if (filter === "day") {
+      const endOfToday = new Date(startOfToday);
+      endOfToday.setDate(endOfToday.getDate() + 1);
+      return date >= startOfToday && date < endOfToday;
+    }
+
+    const rangeStart = new Date(startOfToday);
+    switch (filter) {
+      case "week":
+        rangeStart.setDate(rangeStart.getDate() - 6);
+        break;
+      case "month":
+        rangeStart.setMonth(rangeStart.getMonth() - 1);
+        break;
+      case "year":
+        rangeStart.setFullYear(rangeStart.getFullYear() - 1);
+        break;
+    }
+
+    return date >= rangeStart && date <= now;
+  }
+
+  const filteredEntries = $derived.by(() => {
+    return entries.filter((entry) => {
+      const matchesType =
+        historyEntryTypeFilter === "any" ||
+        entry.entryType === historyEntryTypeFilter;
+      const matchesDate = matchesDateFilter(
+        new Date(entry.date),
+        historyDateFilter
+      );
+
+      return matchesType && matchesDate;
+    });
+  });
 
   // Check auth on mount and redirect accordingly
   $effect(() => {
@@ -518,6 +576,25 @@
             <Tabs.Trigger value="history">History</Tabs.Trigger>
           </Tabs.List>
         </Tabs.Root>
+        <NativeSelect.Root
+          bind:value={historyDateFilter}
+          aria-label="Filter history by date range"
+        >
+          <NativeSelect.Option value="all">All</NativeSelect.Option>
+          <NativeSelect.Option value="day">Today</NativeSelect.Option>
+          <NativeSelect.Option value="week">Week</NativeSelect.Option>
+          <NativeSelect.Option value="month">Month</NativeSelect.Option>
+          <NativeSelect.Option value="year">Year</NativeSelect.Option>
+        </NativeSelect.Root>
+        <NativeSelect.Root
+          bind:value={historyEntryTypeFilter}
+          aria-label="Filter history by entry type"
+        >
+          <NativeSelect.Option value="any">Any</NativeSelect.Option>
+          <NativeSelect.Option value="food">Food</NativeSelect.Option>
+          <NativeSelect.Option value="symptom">Symptom</NativeSelect.Option>
+          <NativeSelect.Option value="exercise">Exercise</NativeSelect.Option>
+        </NativeSelect.Root>
         <div class="flex-1"></div>
         <Button onclick={toggleMode} variant="outline" size="icon" class="mr-4">
           <SunIcon
@@ -766,6 +843,11 @@
               <div class="p-12 text-destructive">Error: {error}</div>
             {:else if entries.length === 0}
               <div class="p-12">No entries yet. Create your first entry!</div>
+            {:else if filteredEntries.length === 0}
+              <div class="p-12">
+                No entries match the selected filters. Adjust them to see more of
+                your history.
+              </div>
             {:else}
               <Table.Root>
                 <Table.Caption>A list of your recent entries.</Table.Caption>
@@ -773,13 +855,13 @@
                   <Table.Row>
                     <Table.Head class="w-[120px] pl-3">Date</Table.Head>
                     <Table.Head class="w-[100px]">Type</Table.Head>
-                    <Table.Head>Details</Table.Head>
+                    <Table.Head class="w-[140px]">Details</Table.Head>
                     <Table.Head>Notes</Table.Head>
                     <Table.Head class="w-[100px]">Actions</Table.Head>
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                  {#each entries as entry: Entry}
+                  {#each filteredEntries as entry: Entry}
                     <Table.Row>
                       <Table.Cell class="font-medium pl-3">
                         {new Date(entry.date).toLocaleDateString()}
@@ -814,6 +896,7 @@
                   {/each}
                 </Table.Body>
               </Table.Root>
+              <!-- Pagination goes here -->
             {/if}
           {/if}
         </div>
