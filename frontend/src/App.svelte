@@ -530,35 +530,6 @@
         </Button>
       </header>
       <div class="flex flex-1 flex-row gap-4 p-4 pt-0">
-        <div class="grid auto-rows-min gap-4 md:grid-rows-3">
-          <div class="bg-muted/50 aspect-video rounded-xl">
-            <Calendar
-              type="single"
-              bind:value={calendarToday}
-              class="rounded-lg border shadow-sm"
-              numberOfMonths={2}
-              captionLayout="label"
-            />
-          </div>
-          <div class="bg-muted/50 aspect-video rounded-xl">
-            <Table.Root>
-              <Table.Caption>A list of your recent symptoms.</Table.Caption>
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head class="w-[100px] pl-3">Date</Table.Head>
-                  <Table.Head>Symptoms</Table.Head>
-                  <Table.Head></Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                <Table.Row></Table.Row>
-              </Table.Body>
-            </Table.Root>
-          </div>
-          <Button onclick={handleLogout} variant="outline" class="mr-4"
-            >Logout</Button
-          >
-        </div>
         <div class="bg-muted/50 min-h-screen flex-1 rounded-xl md:min-h-min">
           {#if error}
             <div class="bg-destructive/10 text-destructive p-4 m-4 rounded-lg">
