@@ -6,6 +6,7 @@
   import * as Table from "$lib/components/ui/table/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
+  import * as Popover from "$lib/components/ui/popover/index.js"
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import SunIcon from "@lucide/svelte/icons/sun";
@@ -16,7 +17,6 @@
   import { Textarea } from "$lib/components/ui/textarea/index.js";
   import { api } from "$lib/api";
   import { authStore } from "$lib/store/auth.svelte";
-  import { getLocalTimeZone, today } from "@internationalized/date";
   import * as NativeSelect from "$lib/components/ui/native-select/index.js";
   import type { ComponentProps } from "svelte";
   import {
@@ -24,6 +24,7 @@
     FieldLabel,
     FieldDescription,
   } from "$lib/components/ui/field/index.js";
+  import PopoverTrigger from "$lib/components/ui/popover/popover-trigger.svelte";
 
   type Entry =
     | {
@@ -55,8 +56,6 @@
   let entries: Entry[] = $state([]);
   let loading = $state(false);
   let error = $state<string | null>(null);
-
-  let calendarToday = $state(today(getLocalTimeZone()));
 
   let { ...restProps }: ComponentProps<typeof Card.Root> = $props();
 
@@ -896,7 +895,6 @@
                   {/each}
                 </Table.Body>
               </Table.Root>
-              <!-- Pagination goes here -->
             {/if}
           {/if}
         </div>

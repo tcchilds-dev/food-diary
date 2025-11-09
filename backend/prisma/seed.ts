@@ -21,7 +21,6 @@ async function main() {
         exerciseDuration: null,
 
         notes: faker.lorem.paragraph(1),
-        createdAt: faker.date.past(),
       },
     });
   }
@@ -44,7 +43,6 @@ async function main() {
         exerciseDuration: null,
 
         notes: faker.lorem.paragraph(1),
-        createdAt: faker.date.past(),
       },
     });
   }
@@ -67,7 +65,6 @@ async function main() {
         exerciseDuration: faker.number.int({ min: 30, max: 120 }),
 
         notes: faker.lorem.paragraph(1),
-        createdAt: faker.date.past(),
       },
     });
   }
