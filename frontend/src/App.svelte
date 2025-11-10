@@ -1,12 +1,9 @@
-<!-- turn back if you value your sanity -->
-
 <script lang="ts">
   import "./app.css";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import * as Table from "$lib/components/ui/table/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
-  import * as Popover from "$lib/components/ui/popover/index.js"
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import SunIcon from "@lucide/svelte/icons/sun";
@@ -24,7 +21,6 @@
     FieldLabel,
     FieldDescription,
   } from "$lib/components/ui/field/index.js";
-  import PopoverTrigger from "$lib/components/ui/popover/popover-trigger.svelte";
 
   type Entry =
     | {

@@ -58,63 +58,63 @@ export const getEntries = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getEntry = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
+// export const getEntry = async (req: AuthRequest, res: Response) => {
+//   try {
+//     const { id } = req.params;
 
-    if (!id || !req.userId) {
-      return res.status(400).json({ error: "Invalid request" });
-    }
+//     if (!id || !req.userId) {
+//       return res.status(400).json({ error: "Invalid request" });
+//     }
 
-    const entry = await prisma.entry.findFirst({
-      where: {
-        id: parseInt(id),
-        userId: req.userId,
-      },
-    });
+//     const entry = await prisma.entry.findFirst({
+//       where: {
+//         id: parseInt(id),
+//         userId: req.userId,
+//       },
+//     });
 
-    if (!entry) {
-      return res.status(404).json({ error: "Entry not found" });
-    }
+//     if (!entry) {
+//       return res.status(404).json({ error: "Entry not found" });
+//     }
 
-    res.json(entry);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error fetching entry" });
-  }
-};
+//     res.json(entry);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Error fetching entry" });
+//   }
+// };
 
-export const updateEntry = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
+// export const updateEntry = async (req: AuthRequest, res: Response) => {
+//   try {
+//     const { id } = req.params;
 
-    if (!id || !req.userId) {
-      return res.status(400).json({ error: "Invalid request" });
-    }
+//     if (!id || !req.userId) {
+//       return res.status(400).json({ error: "Invalid request" });
+//     }
 
-    // Check entry exists and belongs to user
-    const existingEntry = await prisma.entry.findFirst({
-      where: {
-        id: parseInt(id),
-        userId: req.userId,
-      },
-    });
+//     // Check entry exists and belongs to user
+//     const existingEntry = await prisma.entry.findFirst({
+//       where: {
+//         id: parseInt(id),
+//         userId: req.userId,
+//       },
+//     });
 
-    if (!existingEntry) {
-      return res.status(404).json({ error: "Entry not found" });
-    }
+//     if (!existingEntry) {
+//       return res.status(404).json({ error: "Entry not found" });
+//     }
 
-    const entry = await prisma.entry.update({
-      where: { id: parseInt(id) },
-      data: req.body,
-    });
+//     const entry = await prisma.entry.update({
+//       where: { id: parseInt(id) },
+//       data: req.body,
+//     });
 
-    res.json(entry);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error updating entry" });
-  }
-};
+//     res.json(entry);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Error updating entry" });
+//   }
+// };
 
 export const deleteEntry = async (req: AuthRequest, res: Response) => {
   try {
