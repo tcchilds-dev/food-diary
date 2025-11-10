@@ -1,14 +1,19 @@
 import express, { Request, Response, NextFunction } from "express";
+import morgan from "morgan";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes";
 import entryRoutes from "./routes/entryRoutes";
 
 const app = express();
 
-app.use(cors({
-  origin: "http://localhost:5173", // Vite server
-  credentials: true
-}));
+app.use(morgan("combined"));
+
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Vite server
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
