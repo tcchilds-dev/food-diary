@@ -385,6 +385,3 @@ dev:backend` and `npm run dev:frontend` separately.
 - `backend/prisma/schema.prisma` — The authoritative data-contract for the API.
 - `frontend/README.md` — The default Vite + Svelte template notes (only needed
   if you want to compare with upstream template settings).
-
-Feel free to extend this README with deployment notes, architecture diagrams, or
-screenshots once you add the project description at the top.
